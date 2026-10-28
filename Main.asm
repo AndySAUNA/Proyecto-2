@@ -1,4 +1,4 @@
-; Notas: se usa dh para guardar auxiliar de antirebote y se usa dl para guardar estado de juego, ademas se usa cl y ch para contar posicion de botones, entonces use push y pop con esos
+; Notas: se usa dh para guardar auxiliar de antirebote y se usa dl para guardar estado de juego, ademas se usa cl y ch para contar posicion de botones, y bl para posicion de seleccion vertical y bh para posicion horizontal entonces use push y pop con esos
 
 .model small
 .stack 100h
@@ -57,38 +57,50 @@
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; area de procedimientos
 ;------------------------------------------------------------------------------------------------------------------------------------
-; para manejar uso de teclas de control de estado, hace uso de ch para caracter a revisar, cl para estado a activar, dh para antirebote y dl para estado de sitema
+; para manejar uso de teclas de control de estado, hace uso de 'ch' para caracter a revisar, 'cl' para estado a activar, 'dh' para antirebote y 'dl' para estado de sistema a activar
         teclazo proc near
-            mov al, 01h                     ; para leer el teclado
+            mov ah, 01h
             int 16h
 
-            jz notecla1                      ; salta si no hubo tecla
-                cmp al, dh                  ; compara tecla con auxiliar para antirebote (dh)
-                jne antirebote1              ; salta si hay rebote
-                    cmp dh, ch       ; compara con la tecla "caracter"
-                    jne nocaracter1          ; salta si no es caracter
-                        mov dl, cl          ; si es caracter, cambia estado al nuevo (dl)
-                        mov ah, 02h         ; para probar
+            jnz notecla1
+                cmp al, dh
+                je antirebote1
+                    cmp al, ch
+                    jne nocaracter1
+                        mov dl, cl
+
+                        mov ah, 02h
+                        push ax
+                        add al, '0'
                         int 21h
-                    nocaracter1:             ; fin salto de no caracter
-                antirebote1:                 ; fin salto antirebote
-            notecla1:                        ; fin salto tecla vacia
-            mov dh, al                      ; resetea el auxiliar de tecla con lo que se encuentra en el buffer del teclado
+                        pop ax
+
+                    nocaracter1:
+                antirebote1:
+            notecla1:
+            mov dh, al
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
-; para manejar uso de flechas, exactamente igual al macro teclazo, solo que para flechas, hace uso de ch para caracter a revisar, cl para estado a activar, dh para antirebote y dl para estado de sitema
+; para manejar uso de flechas, exactamente igual al macro teclazo, solo que para flechas, hace uso de 'ch' para caracter a revisar, 'cl' para movimiento a activar, 'dh' para antirebote y 'bl' para estado de seleccion
         teclazo2 proc near ; para manejar uso de flechas, exactamente igual al proc teclazo, solo que para flechas
-            mov al, 01h                     ; para leer el teclado
+            mov ah, 00h
             int 16h
 
-            jz notecla2                      ; salta si no hubo tecla
-                cmp al, dh                  ; compara tecla con auxiliar para antirebote (dh)
-                jne antirebote2              ; salta si hay rebote
-                    cmp dh, ch        ; compara con la tecla "caracter"
-                    jne nocaracter2          ; salta si no es caracter
-                        mov cl, ch          ; si es igual al contenido de ch, da cambio de posicion en cl
-                        mov ah, 02h         ; para probar
+            CMP AL, 00h
+
+            jnz notecla2
+                cmp al, dh
+                je antirebote2
+                    cmp al, ch
+                    jne nocaracter2
+                        mov bl, ch
+
+                        mov ah, 02h
+                        push ax
+                        add al, '0'
                         int 21h
+                        pop ax
+
                     nocaracter2:             ; fin salto de no caracter
                 antirebote2:                 ; fin salto antirebote
             notecla2:                        ; fin salto tecla vacia
@@ -97,31 +109,48 @@
 ;------------------------------------------------------------------------------------------------------------------------------------
 
         proceso0 proc near          ; procedimiento para pantalla de presentacion
-            
+            ; aqui va el dibujo###################################################################################################
             inicio0:
-                ; aqui se agrega instruccion de dibujo
-                call teclazo      ; revisa enter en el teclado y pasa al estado 1
-                call teclazo     ; revisa esc em el teclado y sale del programa
+                ; aqui va el dibujo animado ###################################################################################################
+
+                mov ch, 0Dh         ;tecla Enter
+                mov cl, 1           ;menu
+                call teclazo
+
+                mov ch, 1Bh         ;tecla ESC
+                mov cl, 10          ;salida
+                call teclazo
+
             cmp dl, 0               ; revisa que el estado sea igual al actual
             jne inicio0             ; si el estado no ha cambiado, reinicia el loop
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
         proceso1 proc               ; procedimiento para pantalla de menu
+            mov bl, 0
+            inicio1:
+                mov ch, 48h ;tecla arriba
+                mov cl, 0   ;funcion
+                call teclazo2
+                mov ch, 50h ;tecla abajo
+                mov cl, 1   ;funcion
+                call teclazo2
 
-        inicio1:
-            
-            call teclazo2          ; revisa tecla arriba
-            call teclazo2          ; revisa tecla abajo
-            call teclazo2          ; revisa tecla izquierda
-            call teclazo2          ; revisa tecla derecha
-            
-            call teclazo          ; revisa esc em el teclado y cambia estado a 0 para pantalla de presentacion
-            call teclazo          ; revisa enter en el teclado y pasa al estado 1
+                ; logica salvaje de seleccion de modos
 
-        cmp dl, 1
-        jne inicio1
+                
+                
+                ; aqui va el dibujo###################################################################################################
 
+                mov ch, 0Dh ;tecla Enter
+                mov cl, bl  ;opcion de menu resaltada
+                call teclazo          
+                mov ch, 1Bh ;tecla ESC
+                mov cl, 1   ;menu
+                call teclazo                    ; revisa esc em el teclado y cambia estado a 0 para pantalla de presentacion
+
+            cmp dl, 1
+            je inicio1
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
@@ -131,7 +160,7 @@
             call teclazo           ; revisa enter
             call teclazo         ; revisa esc em el teclado y sale del programa
         cmp dl, 2
-        jne inicio2
+        je inicio2
 
         ret
         endp
@@ -139,10 +168,24 @@
         proceso3 proc near          ; procedimiento para pantalla de juego
             
         inicio3:
+
+            mov ch, 48h ;tecla arriba
+                mov cl, 1   ;funcion
+                call teclazo2
+                mov ch, 50h ;tecla abajo
+                mov cl, 2   ;funcion
+                call teclazo2
+                mov ch, 4Bh ;tecla izquierda
+                mov cl, 3   ;funcion
+                call teclazo2
+                mov ch, 4Dh ;tecla derecha
+                mov cl, 4   ;funcion
+                call teclazo2
+
             call teclazo           ; revisa enter
             call teclazo          ; revisa esc em el teclado y sale al menu
         cmp dl, 3
-        jne inicio3
+        je inicio3
  
         ret
         endp
@@ -153,7 +196,7 @@
             call teclazo
             call teclazo     ; revisa esc em el teclado y sale del programa
         cmp dl, 4
-        jne inicio4
+        je inicio4
  
         ret
         endp
@@ -164,7 +207,7 @@
             call teclazo
             call teclazo    ; revisa esc em el teclado y sale del programa
         cmp dl, 5
-        jne inicio5
+        je inicio5
  
         ret
         endp
@@ -175,7 +218,7 @@
             call teclazo
             call teclazo     ; revisa esc em el teclado y sale del programa
         cmp dl, 6
-        jne inicio6
+        je inicio6
  
         ret
         endp
