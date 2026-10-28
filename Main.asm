@@ -1,36 +1,53 @@
-; Notas: se usa dh para guardar auxiliar de antirebote y se usa dl para guardar estado de juego, ademas se usa cl y ch para contar posicion de botones, entonces use push y pop con esos
+; Notas: se usa 'dh' como auxiliar de anti-repeticion y se usa 'dl' para dar la tecla detectada sin repeticion, entonces, use push y pop con esos!
 
-teclazo macro caracter, estado ; para manejar uso de teclas 
-    local notecla, antirebote, nocaracter
-    mov al, 01h ; para leer el teclado
+teclazo macro ; para manejar uso de teclas, solo cambia 'dl' si detecta cambio de tecla, usa 'dh' pra anti-repeticion
+    local notecla, antirebote, noflecha, arriba, abajo, izquierda, derecha,noesc,noenter
+    ; la busqueda para el uso de la instruccion de deteccion de teclas int 16h con 00h y informacion sobre su uso fue asistida por gemini, su implementacion a partir de ahi seria en cierta medida una implementacion propia, (cierta medida porque vi como se implemento en gemini, pero lo necesito diferente)
+    ; para deteccion de teclas, se cambia 'dl', enter es 1, esc es 2, flechas: arriba 3, abajo 4, izquierda 5, derecha 6
+    mov al, 00h 
     int 16h
+    
 
-    jz notecla                  ; salta si no hubo tecla
-        cmp al, dh              ; compara tecla con auxiliar para antirebote (dh)
-        jne antirebote          ; salta si hay rebote
-            cmp dh, caracter    ; compara con la tecla "caracter"
-            jne nocaracter      ; salta si no es caracter
-                mov dl, estado  ; si es caracter, cambia estado al nuevo (dl)
-            nocaracter:         ; fin salto de no caracter
-        antirebote:             ; fin salto antirebote
-    notecla:                    ; fin salto tecla vacia
-    mov dh, al                  ; resetea el auxiliar de tecla con lo que se encuentra en el buffer del teclado
-endm
-teclazo2 macro caracter, pos ; para manejar uso de flechas, exactamente igual al macro teclazo, solo que para flechas
-    local notecla, antirebote, nocaracter
-    mov al, 01h ; para leer el teclado
-    int 16h
+    jz notecla
+        cmp al, dh
+        jne antirebote
+            mov dh, al
+            cmp ah, 00h
+            jne noflecha
 
-    jz notecla                  ; salta si no hubo tecla
-        cmp al, dh              ; compara tecla con auxiliar para antirebote (dh)
-        jne antirebote          ; salta si hay rebote
-            cmp dh, caracter    ; compara con la tecla "caracter"
-            jne nocaracter      ; salta si no es caracter
-                mov cl, estado  ; si es caracter, da cambio de posicion (cl)
-            nocaracter:         ; fin salto de no caracter
-        antirebote:             ; fin salto antirebote
-    notecla:                    ; fin salto tecla vacia
-    mov dh, al                  ; resetea el auxiliar de tecla con lo que se encuentra en el buffer del teclado
+                cmp ah, 48h ;arriba
+                jne arriba
+                    mov dl, 3
+                arriba:
+                cmp ah, 48h ;abajo
+                jne abajo
+                    mov dl, 4
+                abajo:
+                cmp ah, 48h ;izquierda
+                jne izquierda
+                    mov dl, 5
+                izquierda:
+                cmp ah, 48h ;derecha
+                jne derecha
+                    mov dl, 6
+                derecha:
+            
+            noflecha:
+
+            cmp al, 0DH ;enter
+            jne noenter
+                mov dl, 1
+            noenter:
+
+            
+            cmp al, 01h ;esc
+            jne noesc
+                mov dl, 2
+            noesc:
+
+        antirebote:
+    notecla:
+    
 endm
 
 .model small
@@ -106,13 +123,7 @@ endm
 
         inicio1:
             
-            teclazo2 48H,1          ; revisa tecla arriba
-            teclazo2 50H,1          ; revisa tecla abajo
-            teclazo2 4BH,1          ; revisa tecla izquierda
-            teclazo2 4DH,1          ; revisa tecla derecha
-            
-            teclazo 01h, 0          ; revisa esc em el teclado y cambia estado a 0 para pantalla de presentacion
-            teclazo 0DH, 1          ; revisa enter en el teclado y pasa al estado 1
+            teclazo
 
         cmp dl, 1
         jne inicio1
@@ -123,8 +134,7 @@ endm
         proceso2 proc near          ; procedimiento para pantalla de instrucciones de juego
 
         inicio2:
-            teclazo 0DH,1           ; revisa enter
-            teclazo 01h, 10         ; revisa esc em el teclado y sale del programa
+            teclazo
         cmp dl, 2
         jne inicio2
 
@@ -134,8 +144,7 @@ endm
         proceso3 proc near          ; procedimiento para pantalla de juego
             
         inicio3:
-            teclazo 0DH,1           ; revisa enter
-            teclazo 01h, 1          ; revisa esc em el teclado y sale al menu
+            teclazo
         cmp dl, 3
         jne inicio3
  
@@ -145,8 +154,7 @@ endm
         proceso4 proc ; procedimiento para pantalla de pantalla de victoria
                         
         inicio4:
-            teclazo 0DH,1
-            teclazo 01h, 10     ; revisa esc em el teclado y sale del programa
+            teclazo
         cmp dl, 4
         jne inicio4
  
@@ -156,8 +164,7 @@ endm
         proceso5 proc near ; procedimiento para pantalla de pantalla de derrota
                         
         inicio5:
-            teclazo 0DH,1
-            teclazo 01h, 10     ; revisa esc em el teclado y sale del programa
+            teclazo
         cmp dl, 5
         jne inicio5
  
@@ -167,8 +174,7 @@ endm
         proceso6 proc near ; procedimiento para pantalla de post juego
                         
         inicio6:
-            teclazo 0DH,1
-            teclazo 01h, 10     ; revisa esc em el teclado y sale del programa
+            teclazo
         cmp dl, 6
         jne inicio6
  
