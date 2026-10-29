@@ -1,52 +1,52 @@
-; Notas: se usa 'dh' como auxiliar de anti-repeticion y se usa 'dl' para dar la tecla detectada sin repeticion, entonces, use push y pop con esos!
+; Notas: se usa 'dh' como auxiliar de anti-repeticion y se usa 'cl' para dar la tecla detectada sin repeticion y luego dl para estado del loop principal del juego, entonces, use push y pop con esos!
+
+; nota para Andy: se usa IA para revisar errores y para buscar funciones y informacion sobre como se usa, principalmente gemini y copilot.
 
 teclazo macro ; para manejar uso de teclas, solo cambia 'dl' si detecta cambio de tecla, usa 'dh' pra anti-repeticion
-    local notecla, antirebote, noflecha, arriba, abajo, izquierda, derecha,noesc,noenter
-    ; la busqueda para el uso de la instruccion de deteccion de teclas int 16h con 00h y informacion sobre su uso fue asistida por gemini, su implementacion a partir de ahi seria en cierta medida una implementacion propia, (cierta medida porque vi como se implemento en gemini, pero lo necesito diferente)
-    ; para deteccion de teclas, se cambia 'dl', enter es 1, esc es 2, flechas: arriba 3, abajo 4, izquierda 5, derecha 6
-    mov al, 00h 
+    local notecla, antirep, noflecha, arriba, abajo, izquierda, derecha, noesc, noenter, fin
+    ; la busqueda para el uso de la instruccion de deteccion de teclas int 16h con 01h y informacion sobre su uso fue asistida por gemini, su implementacion a partir de ahi seria en cierta medida una implementacion propia, (cierta medida porque vi como se implemento en gemini, pero lo necesito diferente)
+    ; para deteccion de teclas, se cambia 'dl', flechas (wasd): arriba 1, abajo 2, izquierda 3, derecha 4 y teclas normales: enter es 5, esc es 6 
+    mov ah, 01h 
     int 16h
-    
 
     jz notecla
+        mov ah, 00h ; resetear buffer del teclado (muy importante!)
+        int 16h
         cmp al, dh
-        jne antirebote
+        je antirep
             mov dh, al
-            cmp ah, 00h
-            jne noflecha
 
-                cmp ah, 48h ;arriba
-                jne arriba
-                    mov dl, 3
-                arriba:
-                cmp ah, 48h ;abajo
-                jne abajo
-                    mov dl, 4
-                abajo:
-                cmp ah, 48h ;izquierda
-                jne izquierda
-                    mov dl, 5
-                izquierda:
-                cmp ah, 48h ;derecha
-                jne derecha
-                    mov dl, 6
-                derecha:
-            
-            noflecha:
-
+            cmp al, 77h ;arriba W
+            jne arriba
+                mov cl, 1
+            arriba:
+            cmp al, 73h ;abajo S
+            jne abajo
+                mov cl, 2
+            abajo:
+            cmp al, 61h ;izquierda A
+            jne izquierda
+                mov cl, 3
+            izquierda:
+            cmp al, 64h ;derecha D
+            jne derecha
+                mov cl, 4
+            derecha:
             cmp al, 0DH ;enter
             jne noenter
-                mov dl, 1
+                mov cl, 5
             noenter:
-
-            
-            cmp al, 01h ;esc
+            cmp al, 1Bh ;esc
             jne noesc
-                mov dl, 2
+                mov cl, 6
             noesc:
 
-        antirebote:
-    notecla:
+        antirep:
+    jmp fin
+    notecla: ; no se puede confiar en el buffer cuando no hay tecla aparentemente
+    mov dh, 0
+    fin:
+    
     
 endm
 
@@ -62,43 +62,47 @@ endm
         mov ax, @data
         mov ds, ax
         mov dl, estado
-    
-    inicio: ; aqui inicial el loop principal del programa
-        cmp dl, 0 ; aqui ejecuta la pantalla de presencacion para estado 0
+        xor dh,dh
+    ; loop a base de estados, segun el estado llama un procedimiento para esa pantalla en especifico
+    inicio:
+        cmp dl, 0
         jne sig0
             call proceso0
             jmp inicio
         sig0:
-        cmp dl, 1 ; aqui ejecuta la pantalla del menu para el estado 1
+        cmp dl, 1
         jne sig1
             call proceso1
             jmp inicio
         sig1:
-        cmp dl, 2 ; aqui ejecuta la pantalla de instrucciones de juego para el estado 2
+        cmp dl, 2
         jne sig2
             call proceso2
             jmp inicio
         sig2:
-        cmp dl, 3 ; aqui ejecuta la pantalla de juego para el estado 3
+        cmp dl, 3
         jne sig3
             call proceso3
             jmp inicio
         sig3:
-        cmp dl, 4 ; aqui ejecuta la pantalla de victoria de juego para el estado 4
+        cmp dl, 4
         jne sig4
             call proceso4
             jmp inicio
         sig4:
-        cmp dl, 5 ; aqui ejecuta la pantalla de perder de juego para estado 5
+        cmp dl, 5
         jne sig5
             call proceso5
             jmp inicio
         sig5:
-        cmp dl, 6 ; aqui ejecuta la pantalla de post juego para estado 6
+        cmp dl, 6
         jne sig6
             call proceso6
             jmp inicio
         sig6:
+        mov dl, 'X'
+        mov ah, 02h
+        int 21h
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; salida controlada segun requerimiento del proyecto
         mov ah, 0fh 
@@ -111,11 +115,33 @@ endm
         proceso0 proc near          ; procedimiento para pantalla de presentacion
 
             inicio0:
-                ; aqui se agrega instruccion de dibujo
-                teclazo 0DH, 1      ; revisa enter en el teclado y pasa al estado 1
-                teclazo 01h, 10     ; revisa esc em el teclado y sale del programa
-            cmp dl, 0               ; revisa que el estado sea igual al actual
-            jne inicio0             ; si el estado no ha cambiado, reinicia el loop
+                ; aqui se agrega instruccion de dibujo*************************************************************************************************
+                teclazo
+
+                
+
+                cmp cl, 5
+                jne nomenu0
+                    mov dl, 1
+                    push ax
+                push dx
+                mov dl, '1'
+                mov ah, 02h
+                int 21h
+                pop dx
+                pop ax
+                nomenu0:
+                cmp cl, 6
+                jne nosalir0
+                    
+
+                    mov dl, 10
+                    
+                nosalir0:
+                mov cl, 0
+
+            cmp dl, 0
+            je inicio0
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
@@ -125,8 +151,35 @@ endm
             
             teclazo
 
+            cmp cl, 5; tecla enter,
+            jne noenter
+                mov dl, 2
+                push ax
+                push dx
+                mov dl, '2'
+                mov ah, 02h
+                int 21h
+                pop dx
+                pop ax
+            noenter:
+
+            cmp cl, 6 ; tecla esc
+            jne nosalir1
+                mov dl, 0
+                push ax
+                push dx
+                mov dl, '0'
+                mov ah, 02h
+                int 21h
+                pop dx
+                pop ax
+            nosalir1:
+                
+            
+            mov cl, 0
+
         cmp dl, 1
-        jne inicio1
+        je inicio1
 
         ret
         endp
@@ -134,9 +187,11 @@ endm
         proceso2 proc near          ; procedimiento para pantalla de instrucciones de juego
 
         inicio2:
+
             teclazo
+
         cmp dl, 2
-        jne inicio2
+        je inicio2
 
         ret
         endp
@@ -144,9 +199,11 @@ endm
         proceso3 proc near          ; procedimiento para pantalla de juego
             
         inicio3:
+
             teclazo
+
         cmp dl, 3
-        jne inicio3
+        je inicio3
  
         ret
         endp
@@ -154,9 +211,11 @@ endm
         proceso4 proc ; procedimiento para pantalla de pantalla de victoria
                         
         inicio4:
+
             teclazo
+
         cmp dl, 4
-        jne inicio4
+        je inicio4
  
         ret
         endp
@@ -164,9 +223,11 @@ endm
         proceso5 proc near ; procedimiento para pantalla de pantalla de derrota
                         
         inicio5:
+
             teclazo
+
         cmp dl, 5
-        jne inicio5
+        je inicio5
  
         ret
         endp
@@ -174,9 +235,11 @@ endm
         proceso6 proc near ; procedimiento para pantalla de post juego
                         
         inicio6:
+
             teclazo
+
         cmp dl, 6
-        jne inicio6
+        je inicio6
  
         ret
         endp
