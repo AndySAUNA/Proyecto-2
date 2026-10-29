@@ -118,31 +118,18 @@ endm
             inicio0:
                 ; aqui se agrega instruccion de dibujo*************************************************************************************************
                 teclazo
-
-                
-
                 cmp cl, 5 ; enter
                 jne nomenu0
-                    mov dl, 1
-                    push ax
-                    push dx
-                    mov dl, '1'
-                    mov ah, 02h
-                    int 21h
-                    pop dx
-                    pop ax
-                    jmp salida0
-                nomenu0:
 
+                nomenu0:
                 cmp cl, 6 ; esc
                 jne nosalir0
                     mov dl, 10
                     jmp salida0
                 nosalir0:
-
                 salida0:
                 mov cl, 0
-                cmp dl, 0
+            cmp dl, 0
             je inicio0
         ret
         endp
@@ -153,9 +140,7 @@ endm
     proceso1 proc               
 
         inicio1:
-            
             teclazo
-
             cmp cl, 5; enter
             jne noenter1
                 mov dl, 2
@@ -169,25 +154,25 @@ endm
             cmp cl, 1 ; arriba w
             jne now1
                 cmp posy, 4
-                jne vuelta_positiva1
+                jne vueltaw1
                     mov posy, 0
-                vuelta_positiva1:
-                je no_vuelta
+                vueltaw1:
+                je no_vueltaw
                     add posy, 1
-                no_vuelta:
+                no_vueltaw:
+                mov dl, 1
             now1:
             cmp cl, 2 ; abajo s
             jne nos1
                 cmp posy, 1
-                jne vuelta_negativa1
+                jne vueltas1
                     mov posy,4
-                vuelta_negativa1:
-
-            
+                vueltas1:
+                je novueltas1
+                    sub posy, 1
+                novueltas1:
+                mov dl, 1
             nos1:
-
-
-                
             salida1:
             mov cl, 0
         cmp dl, 1
@@ -223,7 +208,7 @@ endm
                 noesc3:
                 cmp cl, 5; enter
                 jne noenter3
-                    mov dl, 1
+                    ; aqui se agrega instruccion de juego*************************************************************************************************
                 noenter3:
             cmp dl, 3
             je inicio3
