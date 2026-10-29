@@ -1,4 +1,4 @@
-; Notas: se usa 'dh' como auxiliar de anti-repeticion y se usa 'cl' para dar la tecla detectada sin repeticion, se usa 'ch' para posicion de flecha vertical y luego dl para estado del loop principal del juego, entonces, use push y pop con esos!
+; Notas: se usa 'dh' como auxiliar de anti-repeticion y se usa 'cl' para dar la tecla detectada sin repeticion y luego dl para estado del loop principal del juego, entonces, use push y pop con esos!
 
 ; nota para Andy: se usa IA para revisar errores y para buscar funciones y informacion sobre como se usa, principalmente gemini y copilot.
 
@@ -57,6 +57,9 @@ endm
     estado db 0
     posy db 0
     posx db 0
+    modoy db 0
+    modox db 0
+    sel db 0
 
 .code
     main proc
@@ -113,7 +116,100 @@ endm
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; area de procedimientos
 ;------------------------------------------------------------------------------------------------------------------------------------
-        proceso0 proc near          ; procedimiento para pantalla de presentacion
+; control ws
+;------------------------------------------------------------------------------------------------------------------------------------
+; revisa 'cl' para las teclas ws y modifica la variable posy que se usa para seleccion y dibujado, su tamaño controlado por modoy
+        ws proc near
+            push cx
+            mov ch, modoy
+            cmp cl, 1 ; arriba w
+            jne now1
+                cmp posy, ch
+                jne vueltaw1
+                    mov posy, 0
+                vueltaw1:
+                je no_vueltaw
+                    add posy, 1
+                no_vueltaw:
+                mov dl, 1
+            now1:
+            cmp cl, 2 ; abajo s
+            jne nos1
+                cmp posy, 1
+                jne vueltas1
+                    mov posy, ch
+                vueltas1:
+                je novueltas1
+                    sub posy, 1
+                novueltas1:
+                mov dl, 1
+            nos1:
+            pop cx
+        ret
+        endp
+;------------------------------------------------------------------------------------------------------------------------------------
+; control ad
+;------------------------------------------------------------------------------------------------------------------------------------
+; revisa 'cl' para las teclas ad y modifica la variable posy que se usa para seleccion y dibujado, su tamaño controlado por modox
+        ad proc near
+            push cx
+            mov ch, modox
+            cmp cl, 3 ; arriba a
+            jne noa
+                cmp posy, ch
+                jne vueltaa
+                    mov posy, 0
+                vueltaa:
+                je no_vueltaa
+                    add posx, 1
+                no_vueltaa:
+                mov dl, 1
+            noa:
+            cmp cl, 4 ; abajo d
+            jne nos1
+                cmp posy, 1
+                jne vueltad
+                    mov posy, ch
+                vueltad:
+                je novueltad
+                    sub posx, 1
+                novueltad:
+                mov dl, 1
+            nos2:
+            pop cx
+        ret
+        endp
+;------------------------------------------------------------------------------------------------------------------------------------
+; selector de menu
+;------------------------------------------------------------------------------------------------------------------------------------
+; esto convierte las posiciones en variable posy a selecciones para diferentes pantallas en el menu
+        selector_menu proc near
+            cmp posy, 1
+            jne nose1
+                mov sel, 3 ; jugar
+            nose1:
+            cmp posy, 2
+            jne nose2
+                mov sel, 1 ; nivel de dificultad (no implementado aun)
+            nose2:
+            cmp posy, 3
+            jne nose3
+                mov sel, 2 ; instrucciones
+            nose3:
+            cmp posy, 4
+            jne nose4
+                mov sel, 7 ; creditos
+            nose4:
+            cmp posy, 5
+            jne nose5
+                mov sel, 8 ; salir
+            nose5:
+        ret
+        endp
+;------------------------------------------------------------------------------------------------------------------------------------
+; ; procedimiento para pantalla de presentacion | en teoria listo
+;------------------------------------------------------------------------------------------------------------------------------------
+        proceso0 proc near          
 
             inicio0:
                 ; aqui se agrega instruccion de dibujo*************************************************************************************************
@@ -136,52 +232,33 @@ endm
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; procedimiento para pantalla de menu
 ;------------------------------------------------------------------------------------------------------------------------------------
-;   este proc es para el menu, ciclicamente revisa el teclado: pantalla de inicio con esc, entra a otro proc con enter segun pos vertical seleccionada
-    proceso1 proc               
+;   este proc es para el menu, ciclicamente revisa el teclado: pantalla de inicio con esc, entra a otro proc con enter segun pos vertical seleccionada por proc ws
+        proceso1 proc
+            mov modoy, 5 ; 5 modos de menu
+            inicio1:
+                teclazo
 
-        inicio1:
-            teclazo
-            cmp cl, 5; enter
-            jne noenter1
-                mov dl, 2
-                jmp salida1
-            noenter1:
-            cmp cl, 6 ; esc
-            jne nosalir1
-                mov dl, 0
-                jmp salida1
-            nosalir1:
-            cmp cl, 1 ; arriba w
-            jne now1
-                cmp posy, 4
-                jne vueltaw1
-                    mov posy, 0
-                vueltaw1:
-                je no_vueltaw
-                    add posy, 1
-                no_vueltaw:
-                mov dl, 1
-            now1:
-            cmp cl, 2 ; abajo s
-            jne nos1
-                cmp posy, 1
-                jne vueltas1
-                    mov posy,4
-                vueltas1:
-                je novueltas1
-                    sub posy, 1
-                novueltas1:
-                mov dl, 1
-            nos1:
-            salida1:
-            mov cl, 0
-        cmp dl, 1
-        je inicio1
+                cmp cl, 5 ; enter
+                jne noenter1
+                    mov dl, sel;
+                    jmp salida1
+                noenter1:
+                cmp cl, 6 ; esc
+                jne nosalir1
+                    mov dl, 0 ; presentacion
+                    jmp salida1
+                nosalir1:
+                call ws
+                call selector_menu
+                salida1:
+                mov cl, 0
+            cmp dl, 1
+            je inicio1
 
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
-; procedimiento para pantalla de instrucciones de juego
+; procedimiento para pantalla de instrucciones de juego | en teoria listo
 ;------------------------------------------------------------------------------------------------------------------------------------
 ;este proc solo dibuja las instrucciones del juego, de aqui solo se puede activar la tecla "esc"
         proceso2 proc near          
@@ -190,8 +267,12 @@ endm
             teclazo
             cmp cl, 6 ; esc
             jne nosalir2
-                mov dl, 1
+                mov dl, 1 ;menu
             nosalir2:
+            cmp cl, 5; enter
+            jne noenter2
+                mov dl, 1 ; menu
+            noenter2:
         cmp dl, 2
         je inicio2
         ret
@@ -215,10 +296,11 @@ endm
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
-; procedimiento para pantalla de pantalla de victoria
+; procedimiento para pantalla de pantalla de victoria | en teoria listo
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; solo presenta pantalla de victoria hasta que se toque esc o enter
-        proceso4 proc   
+        proceso4 proc
+            ; aqui se agrega instruccion de dibujo*************************************************************************************************
             inicio4:
                 teclazo
                 cmp cl, 6 ; esc
@@ -234,10 +316,11 @@ endm
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
-; procedimiento para pantalla de pantalla de derrota
+; procedimiento para pantalla de pantalla de derrota | en teoria listo
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; solo presenta pantalla de derrota hasta que se toque esc o enter
         proceso5 proc near
+            ; aqui se agrega instruccion de dibujo*************************************************************************************************
             inicio5:
                 teclazo
                 cmp cl, 6 ; esc
@@ -253,9 +336,10 @@ endm
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
-; procedimiento para pantalla de post juego
+; procedimiento para pantalla de post juego | en teoria listo
 ;------------------------------------------------------------------------------------------------------------------------------------
         proceso6 proc near
+            ; aqui se agrega instruccion de dibujo*************************************************************************************************
             inicio6:
                 teclazo
                 cmp cl, 6 ; esc
@@ -268,6 +352,44 @@ endm
                 noenter6:
             cmp dl, 6
             je inicio6
+        ret
+        endp
+;------------------------------------------------------------------------------------------------------------------------------------
+; pantalla de creditos | en teoria listo
+;------------------------------------------------------------------------------------------------------------------------------------
+        proceso7 proc near
+            ; aqui se agrega instruccion de dibujo*************************************************************************************************
+            inicio7:
+                teclazo
+                cmp cl, 6 ; esc
+                jne noesc7
+                    mov dl, 1 ; menu
+                noesc7:
+                cmp cl, 5; enter
+                jne noenter7
+                    mov dl, 1 ; menu
+                noenter7:
+            cmp dl, 7
+            je inicio7
+        ret
+        endp
+;------------------------------------------------------------------------------------------------------------------------------------
+; nivel de dificultad | por implementar
+;------------------------------------------------------------------------------------------------------------------------------------
+        proceso8 proc near
+            ; aqui se agrega instruccion de dibujo*************************************************************************************************
+            inicio8:
+                teclazo
+                cmp cl, 6 ; esc
+                jne noesc8
+                    mov dl, 1 ; menu
+                noesc8:
+                cmp cl, 5; enter
+                jne noenter8
+                    mov dl, 3 ; juego
+                noenter8:
+            cmp dl, 8
+            je inicio8
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
