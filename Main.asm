@@ -1,4 +1,4 @@
-; Notas: se usa 'dh' como auxiliar de anti-repeticion y se usa 'cl' para dar la tecla detectada sin repeticion y luego dl para estado del loop principal del juego, entonces, use push y pop con esos!
+; Notas: se usa 'dh' como auxiliar de anti-repeticion y se usa 'cl' para dar la tecla detectada sin repeticion, se usa 'ch' para posicion de flecha vertical y luego dl para estado del loop principal del juego, entonces, use push y pop con esos!
 
 ; nota para Andy: se usa IA para revisar errores y para buscar funciones y informacion sobre como se usa, principalmente gemini y copilot.
 
@@ -55,7 +55,8 @@ endm
 
 .data
     estado db 0
-
+    posy db 0
+    posx db 0
 
 .code
     main proc
@@ -120,129 +121,172 @@ endm
 
                 
 
-                cmp cl, 5
+                cmp cl, 5 ; enter
                 jne nomenu0
                     mov dl, 1
                     push ax
-                push dx
-                mov dl, '1'
-                mov ah, 02h
-                int 21h
-                pop dx
-                pop ax
+                    push dx
+                    mov dl, '1'
+                    mov ah, 02h
+                    int 21h
+                    pop dx
+                    pop ax
+                    jmp salida0
                 nomenu0:
-                cmp cl, 6
+
+                cmp cl, 6 ; esc
                 jne nosalir0
-                    
-
                     mov dl, 10
-                    
+                    jmp salida0
                 nosalir0:
-                mov cl, 0
 
-            cmp dl, 0
+                salida0:
+                mov cl, 0
+                cmp dl, 0
             je inicio0
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
-        proceso1 proc               ; procedimiento para pantalla de menu
+; procedimiento para pantalla de menu
+;------------------------------------------------------------------------------------------------------------------------------------
+;   este proc es para el menu, ciclicamente revisa el teclado: pantalla de inicio con esc, entra a otro proc con enter segun pos vertical seleccionada
+    proceso1 proc               
 
         inicio1:
             
             teclazo
 
-            cmp cl, 5; tecla enter,
-            jne noenter
+            cmp cl, 5; enter
+            jne noenter1
                 mov dl, 2
-                push ax
-                push dx
-                mov dl, '2'
-                mov ah, 02h
-                int 21h
-                pop dx
-                pop ax
-            noenter:
-
-            cmp cl, 6 ; tecla esc
+                jmp salida1
+            noenter1:
+            cmp cl, 6 ; esc
             jne nosalir1
                 mov dl, 0
-                push ax
-                push dx
-                mov dl, '0'
-                mov ah, 02h
-                int 21h
-                pop dx
-                pop ax
+                jmp salida1
             nosalir1:
-                
-            
-            mov cl, 0
+            cmp cl, 1 ; arriba w
+            jne now1
+                cmp posy, 4
+                jne vuelta_positiva1
+                    mov posy, 0
+                vuelta_positiva1:
+                je no_vuelta
+                    add posy, 1
+                no_vuelta:
+            now1:
+            cmp cl, 2 ; abajo s
+            jne nos1
+                cmp posy, 1
+                jne vuelta_negativa1
+                    mov posy,4
+                vuelta_negativa1:
 
+            
+            nos1:
+
+
+                
+            salida1:
+            mov cl, 0
         cmp dl, 1
         je inicio1
 
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
-        proceso2 proc near          ; procedimiento para pantalla de instrucciones de juego
-
+; procedimiento para pantalla de instrucciones de juego
+;------------------------------------------------------------------------------------------------------------------------------------
+;este proc solo dibuja las instrucciones del juego, de aqui solo se puede activar la tecla "esc"
+        proceso2 proc near          
+            ; aqui se agrega instruccion de dibujo*************************************************************************************************
         inicio2:
-
             teclazo
-
+            cmp cl, 6 ; esc
+            jne nosalir2
+                mov dl, 1
+            nosalir2:
         cmp dl, 2
         je inicio2
-
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
-        proceso3 proc near          ; procedimiento para pantalla de juego
-            
-        inicio3:
-
-            teclazo
-
-        cmp dl, 3
-        je inicio3
- 
+; procedimiento para pantalla de juego
+;------------------------------------------------------------------------------------------------------------------------------------
+        proceso3 proc near          
+            inicio3:
+                teclazo
+                cmp cl, 6 ; esc
+                jne noesc3
+                    mov dl, 1
+                noesc3:
+                cmp cl, 5; enter
+                jne noenter3
+                    mov dl, 1
+                noenter3:
+            cmp dl, 3
+            je inicio3
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
-        proceso4 proc ; procedimiento para pantalla de pantalla de victoria
-                        
-        inicio4:
-
-            teclazo
-
-        cmp dl, 4
-        je inicio4
- 
+; procedimiento para pantalla de pantalla de victoria
+;------------------------------------------------------------------------------------------------------------------------------------
+; solo presenta pantalla de victoria hasta que se toque esc o enter
+        proceso4 proc   
+            inicio4:
+                teclazo
+                cmp cl, 6 ; esc
+                jne noesc4
+                    mov dl, 1 ; menu
+                noesc4:
+                cmp cl, 5; enter
+                jne noenter4
+                    mov dl, 6 ; post juego
+                noenter4:
+            cmp dl, 4
+            je inicio4
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
-        proceso5 proc near ; procedimiento para pantalla de pantalla de derrota
-                        
-        inicio5:
-
-            teclazo
-
-        cmp dl, 5
-        je inicio5
- 
+; procedimiento para pantalla de pantalla de derrota
+;------------------------------------------------------------------------------------------------------------------------------------
+; solo presenta pantalla de derrota hasta que se toque esc o enter
+        proceso5 proc near
+            inicio5:
+                teclazo
+                cmp cl, 6 ; esc
+                jne noesc5
+                    mov dl, 1 ; menu
+                noesc5:
+                cmp cl, 5; enter
+                jne noenter5
+                    mov dl, 6 ; post juego
+                noenter5:
+            cmp dl, 5
+            je inicio5
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
-        proceso6 proc near ; procedimiento para pantalla de post juego
-                        
-        inicio6:
-
-            teclazo
-
-        cmp dl, 6
-        je inicio6
- 
+; procedimiento para pantalla de post juego
+;------------------------------------------------------------------------------------------------------------------------------------
+        proceso6 proc near
+            inicio6:
+                teclazo
+                cmp cl, 6 ; esc
+                jne noesc6
+                    mov dl, 1 ; menu
+                noesc6:
+                cmp cl, 5; enter
+                jne noenter6
+                    mov dl, 3 ; juego
+                noenter6:
+            cmp dl, 6
+            je inicio6
         ret
         endp
-
+;------------------------------------------------------------------------------------------------------------------------------------
+;final
+;------------------------------------------------------------------------------------------------------------------------------------
     main endp
     end main
