@@ -2,20 +2,22 @@
 
 ; nota para Andy: se usa IA para revisar errores y para buscar funciones y informacion sobre como se usa, principalmente gemini y copilot.
 
+;------------------------------------------------------------------------------------------------------------------------------------
+; teclazo -  Funciona perfectamente, no lo toque!
+;------------------------------------------------------------------------------------------------------------------------------------
 teclazo macro ; para manejar uso de teclas, solo cambia 'dl' si detecta cambio de tecla, usa 'dh' pra anti-repeticion
     local notecla, antirep, noflecha, arriba, abajo, izquierda, derecha, noesc, noenter, fin
     ; la busqueda para el uso de la instruccion de deteccion de teclas int 16h con 01h y informacion sobre su uso fue asistida por gemini, su implementacion a partir de ahi seria en cierta medida una implementacion propia, (cierta medida porque vi como se implemento en gemini, pero lo necesito diferente)
     ; para deteccion de teclas, se cambia 'dl', flechas (wasd): arriba 1, abajo 2, izquierda 3, derecha 4 y teclas normales: enter es 5, esc es 6 
+;------------------------------------------------------------------------------------------------------------------------------------
     mov ah, 01h 
     int 16h
-
     jz notecla
         mov ah, 00h ; resetear buffer del teclado (muy importante!)
         int 16h
         cmp al, dh
         je antirep
             mov dh, al
-
             cmp al, 77h ;arriba W
             jne arriba
                 mov cl, 1
@@ -40,19 +42,20 @@ teclazo macro ; para manejar uso de teclas, solo cambia 'dl' si detecta cambio d
             jne noesc
                 mov cl, 6
             noesc:
-
         antirep:
     jmp fin
     notecla: ; no se puede confiar en el buffer cuando no hay tecla aparentemente
     mov dh, 0
     fin:
-    
-    
 endm
-
+;------------------------------------------------------------------------------------------------------------------------------------
+;inicia programa
+;------------------------------------------------------------------------------------------------------------------------------------
 .model small
 .stack 100h
-
+;------------------------------------------------------------------------------------------------------------------------------------
+; variabbles
+;------------------------------------------------------------------------------------------------------------------------------------
 .data
     estado db 0
     posy db 0
@@ -60,14 +63,19 @@ endm
     modoy db 0
     modox db 0
     sel db 0
-
+    dificultad db 0
+;------------------------------------------------------------------------------------------------------------------------------------
+; codigo
+;------------------------------------------------------------------------------------------------------------------------------------
 .code
     main proc
         mov ax, @data
         mov ds, ax
         mov dl, estado
         xor dh,dh
-    ; loop a base de estados, segun el estado llama un procedimiento para esa pantalla en especifico
+;------------------------------------------------------------------------------------------------------------------------------------
+; loop a base de estados, segun el estado llama un procedimiento para esa pantalla en especifico
+;------------------------------------------------------------------------------------------------------------------------------------
     inicio:
         cmp dl, 0
         jne sig0
@@ -109,12 +117,13 @@ endm
         int 21h
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; salida controlada segun requerimiento del proyecto
+;------------------------------------------------------------------------------------------------------------------------------------
         mov ah, 0fh 
         int 10h
         mov ah, 4ch
         int 21h
 ;------------------------------------------------------------------------------------------------------------------------------------
-; area de procedimientos
+; Area de procedimientos
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; control ws
 ;------------------------------------------------------------------------------------------------------------------------------------
@@ -123,27 +132,33 @@ endm
             push cx
             mov ch, modoy
             cmp cl, 1 ; arriba w
-            jne now1
+            jne finw
                 cmp posy, ch
-                jne vueltaw1
-                    mov posy, 0
-                vueltaw1:
-                je no_vueltaw
+                jne novueltaw
+                    mov posy, 1
+                    call prueba2 ; ////////////////////////////////////////////////////////////////////// eliminar
+                    jmp fins
+                novueltaw:
+                je vueltaw
                     add posy, 1
-                no_vueltaw:
-                mov dl, 1
-            now1:
+                    call prueba2 ; ////////////////////////////////////////////////////////////////////// eliminar
+                    jmp fins
+                vueltaw:
+            finw:
             cmp cl, 2 ; abajo s
-            jne nos1
+            jne fins
                 cmp posy, 1
-                jne vueltas1
+                jne novueltas
                     mov posy, ch
-                vueltas1:
-                je novueltas1
+                    call prueba2 ; ////////////////////////////////////////////////////////////////////// eliminar
+                    jmp fins
+                novueltas:
+                je vueltas
                     sub posy, 1
-                novueltas1:
-                mov dl, 1
-            nos1:
+                    call prueba2 ; ////////////////////////////////////////////////////////////////////// eliminar
+                    jmp fins
+                vueltas:
+            fins:
             pop cx
         ret
         endp
@@ -166,7 +181,7 @@ endm
                 mov dl, 1
             noa:
             cmp cl, 4 ; abajo d
-            jne nos1
+            jne nod
                 cmp posy, 1
                 jne vueltad
                     mov posy, ch
@@ -175,7 +190,7 @@ endm
                     sub posx, 1
                 novueltad:
                 mov dl, 1
-            nos2:
+            nod:
             pop cx
         ret
         endp
@@ -184,28 +199,44 @@ endm
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; esto convierte las posiciones en variable posy a selecciones para diferentes pantallas en el menu
         selector_menu proc near
-            cmp posy, 1
-            jne nose1
+            cmp posy, 5
+            jne nose5
                 mov sel, 3 ; jugar
-            nose1:
-            cmp posy, 2
-            jne nose2
+                ; aqui se agrega instruccion de dibujo*************************************************************************************************
+                jmp salselmenu
+            nose5:
+            cmp posy, 4
+            jne nose4
                 mov sel, 1 ; nivel de dificultad (no implementado aun)
-            nose2:
+                ; aqui se agrega instruccion de dibujo*************************************************************************************************
+                jmp salselmenu
+            nose4:
             cmp posy, 3
             jne nose3
                 mov sel, 2 ; instrucciones
+                ; aqui se agrega instruccion de dibujo*************************************************************************************************
+                jmp salselmenu
             nose3:
-            cmp posy, 4
-            jne nose4
+            cmp posy, 2
+            jne nose2
                 mov sel, 7 ; creditos
-            nose4:
-            cmp posy, 5
-            jne nose5
-                mov sel, 8 ; salir
-            nose5:
+                ; aqui se agrega instruccion de dibujo*************************************************************************************************
+                jmp salselmenu
+            nose2:
+            cmp posy, 1
+            jne nose1
+                mov sel, 10 ; salir
+                ; aqui se agrega instruccion de dibujo*************************************************************************************************
+                jmp salselmenu
+            nose1:
+            salselmenu:
         ret
         endp
+;------------------------------------------------------------------------------------------------------------------------------------
+; seleccion de juego
+;------------------------------------------------------------------------------------------------------------------------------------
+
+
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; ; procedimiento para pantalla de presentacion | en teoria listo
 ;------------------------------------------------------------------------------------------------------------------------------------
@@ -214,13 +245,16 @@ endm
             inicio0:
                 ; aqui se agrega instruccion de dibujo*************************************************************************************************
                 teclazo
-                cmp cl, 5 ; enter
+                cmp cl, 5 ; detecta enter
                 jne nomenu0
-
+                    mov dl, 1 ; ir menu
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
+                    jmp salida0
                 nomenu0:
-                cmp cl, 6 ; esc
+                cmp cl, 6 ; detecta esc
                 jne nosalir0
-                    mov dl, 10
+                    mov dl, 10 ; ir salida
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                     jmp salida0
                 nosalir0:
                 salida0:
@@ -235,21 +269,22 @@ endm
 ;   este proc es para el menu, ciclicamente revisa el teclado: pantalla de inicio con esc, entra a otro proc con enter segun pos vertical seleccionada por proc ws
         proceso1 proc
             mov modoy, 5 ; 5 modos de menu
+            mov sel, 5 ; inicializa posicion 5
+            ; aqui se agrega instruccion de dibujo*************************************************************************************************
             inicio1:
                 teclazo
-
-                cmp cl, 5 ; enter
+                cmp cl, 5 ; detecta enter
                 jne noenter1
-                    mov dl, sel;
+                    mov dl, sel ; ir seleccionado
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                     jmp salida1
                 noenter1:
-                cmp cl, 6 ; esc
+                cmp cl, 6 ; detecta esc
                 jne nosalir1
-                    mov dl, 0 ; presentacion
+                    mov dl, 0 ; ir presentacion
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                     jmp salida1
                 nosalir1:
-                call ws
-                call selector_menu
                 salida1:
                 mov cl, 0
             cmp dl, 1
@@ -265,14 +300,18 @@ endm
             ; aqui se agrega instruccion de dibujo*************************************************************************************************
         inicio2:
             teclazo
-            cmp cl, 6 ; esc
+            cmp cl, 6 ; detecta esc
             jne nosalir2
-                mov dl, 1 ;menu
+                mov dl, 1 ; ir menu
+                call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
             nosalir2:
-            cmp cl, 5; enter
+            cmp cl, 5; detecta enter
             jne noenter2
-                mov dl, 1 ; menu
+                mov dl, 1 ; ir menu
+                call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
             noenter2:
+            call ad
+            call selector_menu
         cmp dl, 2
         je inicio2
         ret
@@ -283,12 +322,14 @@ endm
         proceso3 proc near          
             inicio3:
                 teclazo
-                cmp cl, 6 ; esc
+                cmp cl, 6 ; detecta esc
                 jne noesc3
-                    mov dl, 1
+                    mov dl, 1 ; ir menu
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noesc3:
-                cmp cl, 5; enter
+                cmp cl, 5; detecta enter
                 jne noenter3
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                     ; aqui se agrega instruccion de juego*************************************************************************************************
                 noenter3:
             cmp dl, 3
@@ -303,13 +344,15 @@ endm
             ; aqui se agrega instruccion de dibujo*************************************************************************************************
             inicio4:
                 teclazo
-                cmp cl, 6 ; esc
+                cmp cl, 6 ; detecta esc
                 jne noesc4
-                    mov dl, 1 ; menu
+                    mov dl, 1 ; ir menu
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noesc4:
-                cmp cl, 5; enter
+                cmp cl, 5; detecta enter
                 jne noenter4
-                    mov dl, 6 ; post juego
+                    mov dl, 6 ; ir post juego
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noenter4:
             cmp dl, 4
             je inicio4
@@ -323,13 +366,15 @@ endm
             ; aqui se agrega instruccion de dibujo*************************************************************************************************
             inicio5:
                 teclazo
-                cmp cl, 6 ; esc
+                cmp cl, 6 ; detecta esc
                 jne noesc5
-                    mov dl, 1 ; menu
+                    mov dl, 1 ; ir menu
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noesc5:
-                cmp cl, 5; enter
+                cmp cl, 5; detecta enter
                 jne noenter5
-                    mov dl, 6 ; post juego
+                    mov dl, 6 ; ir post juego
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noenter5:
             cmp dl, 5
             je inicio5
@@ -342,13 +387,15 @@ endm
             ; aqui se agrega instruccion de dibujo*************************************************************************************************
             inicio6:
                 teclazo
-                cmp cl, 6 ; esc
+                cmp cl, 6 ; detecta esc
                 jne noesc6
-                    mov dl, 1 ; menu
+                    mov dl, 1 ; ir menu
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noesc6:
-                cmp cl, 5; enter
+                cmp cl, 5; detecta enter
                 jne noenter6
-                    mov dl, 3 ; juego
+                    mov dl, 3 ; ir juego
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noenter6:
             cmp dl, 6
             je inicio6
@@ -361,13 +408,15 @@ endm
             ; aqui se agrega instruccion de dibujo*************************************************************************************************
             inicio7:
                 teclazo
-                cmp cl, 6 ; esc
+                cmp cl, 6 ; detecta esc
                 jne noesc7
-                    mov dl, 1 ; menu
+                    mov dl, 1 ; ir menu
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noesc7:
-                cmp cl, 5; enter
+                cmp cl, 5; detecta enter
                 jne noenter7
-                    mov dl, 1 ; menu
+                    mov dl, 1 ; ir menu
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noenter7:
             cmp dl, 7
             je inicio7
@@ -380,16 +429,52 @@ endm
             ; aqui se agrega instruccion de dibujo*************************************************************************************************
             inicio8:
                 teclazo
-                cmp cl, 6 ; esc
+                cmp cl, 6 ; detecta esc
                 jne noesc8
-                    mov dl, 1 ; menu
+                    mov dl, 1 ; ir menu
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noesc8:
-                cmp cl, 5; enter
+                cmp cl, 5; detecta enter
                 jne noenter8
-                    mov dl, 3 ; juego
+                    mov dl, 3 ; ir juego
+                    call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noenter8:
             cmp dl, 8
             je inicio8
+        ret
+        endp
+;------------------------------------------------------------------------------------------------------------------------------------
+; esto es solo para probar logica de control
+;------------------------------------------------------------------------------------------------------------------------------------
+        prueba proc near
+            push ax
+            push cx
+            push dx
+            add dl, '0'
+            mov ah, 02h
+            int 21h
+            pop dx
+            pop cx
+            pop ax
+        ret
+        endp
+;------------------------------------------------------------------------------------------------------------------------------------
+; esto es solo para probar logica de menu
+;------------------------------------------------------------------------------------------------------------------------------------
+        prueba2 proc near
+            push ax
+            push cx
+            push dx
+            mov dl, 'y'
+            mov ah, 02h
+            int 21h
+            mov dl, posy
+            add dl, '0'
+            mov ah, 02h
+            int 21h
+            pop dx
+            pop cx
+            pop ax
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
@@ -397,3 +482,4 @@ endm
 ;------------------------------------------------------------------------------------------------------------------------------------
     main endp
     end main
+;------------------------------------------------------------------------------------------------------------------------------------
