@@ -60,7 +60,6 @@ bichito macro n
     mov ah, 02h
     mov dl, ','
     int 21h
-ret
 endm
 ;------------------------------------------------------------------------------------------------------------------------------------
 ;iniciliza programa
@@ -154,7 +153,7 @@ endm
 ;------------------------------------------------------------------------------------------------------------------------------------
 
 ;------------------------------------------------------------------------------------------------------------------------------------
-; control ws
+; control ws | funciona perfectamente! no lo toque!
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; revisa 'cl' para las teclas ws y modifica la variable posy que se usa para seleccion y dibujado, su tamaño controlado por modoy
         ws proc near
@@ -200,28 +199,32 @@ endm
             mov ch, modox
             cmp cl, 3 ; arriba a
             jne fina
-                cmp posx, ch
+                cmp posx, 0
                 jne novueltaa
-                    mov posx, 0
-                    call prueba2 ; ////////////////////////////////////////////////////////////////////// eliminar
+                    mov posx, ch
+                    call prueba3 ; ////////////////////////////////////////////////////////////////////// eliminar
+                    jmp finad
                 novueltaa:
                 je vueltaa
-                    add posx, 1
-                    call prueba2 ; ////////////////////////////////////////////////////////////////////// eliminar
+                    sub posx, 1
+                    call prueba3 ; ////////////////////////////////////////////////////////////////////// eliminar
+                    jmp finad
                 vueltaa:
             fina:
             cmp cl, 4 ; abajo d
             jne find
-                cmp posx, 0
+                cmp posx, ch
                 jne novueltad
-                    mov posx, ch
-                    call prueba2 ; ////////////////////////////////////////////////////////////////////// eliminar
+                    mov posx, 0
+                    call prueba3 ; ////////////////////////////////////////////////////////////////////// eliminar
+                    jmp finad
                 novueltad:
                 je vueltad
-                    sub posx, 1
-                    call prueba2 ; ////////////////////////////////////////////////////////////////////// eliminar
+                    add posx, 1
+                    call prueba3 ; ////////////////////////////////////////////////////////////////////// eliminar
                 vueltad:
             find:
+            finad:
             pop cx
         ret
         endp
@@ -659,16 +662,35 @@ endm
             pop ax
         ret
         endp
+        prueba3 proc near
+            push ax
+            push cx
+            push dx
+            mov dl, 'x'
+            mov ah, 02h
+            int 21h
+            mov dl, posx
+            add dl, '0'
+            mov ah, 02h
+            int 21h
+            pop dx
+            pop cx
+            pop ax
+        ret
+        endp
 
 ;------------------------------------------------------------------------------------------------------------------------------------
 ; esto es solo para probar logica de menu
 ;------------------------------------------------------------------------------------------------------------------------------------
-; lo hice asi porque era copy y paste, y no hay problema con memoria o tamaño del codigo
+; lo hice asi porque era copy y paste, y no hay problema con memoria o tamaño del codigo, usar loops o saltos es mucho trabajo para este gordo
         pruebabichos proc
             push ax
             push dx
             mov ah, 02h
             mov dl, 13
+            int 21h
+            mov ah, 02h
+            mov dl, 10
             int 21h
 
             bichito 0
@@ -680,9 +702,12 @@ endm
             mov ah, 02h
             mov dl, 13
             int 21h
+            mov ah, 02h
+            mov dl, 10
+            int 21h
             pop dx
             pop ax
-
+        ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
 ;final
