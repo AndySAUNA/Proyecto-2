@@ -300,30 +300,38 @@ endm
 ;actualizarjuegoxy
 ;------------------------------------------------------------------------------------------------------------------------------------
         actualizarjuegoxy proc near
-            call ad ; revisa teclado y actualiza posx
-            call ws ; revisa teclado y actualiza posy
             push bx
             push cx
+            call ad ; revisa teclado y actualiza posx
+            call ws ; revisa teclado y actualiza posy
+            
             mov ch, posx ; teclado actual
             mov cl, posy ; teclado actual
+
             mov bh, 0 ; aparentemente hay que limpiar la parte alta para direccionamiento (me di cuenta gracias al IA)
             mov bl, posx ; luegoo se agrega al bajo se le agrega el indice (me di cuenta gracias al IA)
+
             cmp ch, selx ; revisa si cambio de posicion x
             je nocambiox
                  ; aqui se agrega instruccion de dibujo*************************************************************************************************
                  ; aqui se agrega instruccion de dibujo*************************************************************************************************
                  mov selx, ch
+                 mov cl, bichos[bx]
+                 mov sely, cl
+                 mov posy, cl
+                 jmp fin_de_actualizacion
             nocambiox:
             
             cmp cl, bichos[bx] ; revisa si cambio de posicion (me di cuenta que hay que usar bx para esto gracias al IA)
             je nocambioy
+                
                  ; aqui se agrega instruccion de dibujo*************************************************************************************************
                  ; aqui se agrega instruccion de dibujo*************************************************************************************************
                 mov bichos[bx], cl
             nocambioy:
             
             
-            
+            fin_de_actualizacion:
             pop cx
             pop bx
         ret
@@ -390,13 +398,13 @@ endm
                 mov bichos[3], 1
                 mov bichos[4], 1
             noduro:
-            je nofacil
+            je nofacilonormal
                 mov bichos[0], 1
                 mov bichos[1], 1
                 mov bichos[2], 1
                 mov bichos[3], 1
                 mov bichos[4], 0
-            nofacil:
+            nofacilonormal:
         ret
         endp
 ;------------------------------------------------------------------------------------------------------------------------------------
@@ -494,6 +502,7 @@ endm
                     call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                 noesc3:
                 cmp cl, 5; detecta enter
+
                 jne noenter3
                     ;call prueba ; ////////////////////////////////////////////////////////////////////// eliminar
                     call pruebabichos
